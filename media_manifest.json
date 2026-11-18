@@ -1,0 +1,42 @@
+{
+  "ballad.mp4": {
+    "parts": [
+      "ballad.00.part",
+      "ballad.01.part"
+    ],
+    "bytes": 40890213,
+    "sha256": "83c154c3e68d730db0b19eb4b5513a5159b56732b17cffb0310a39be5eb5464d"
+  },
+  "life.mp4": {
+    "parts": [
+      "life.00.part",
+      "life.01.part"
+    ],
+    "bytes": 39323375,
+    "sha256": "b26cb940e64f99e1e4ed0fbfa16e0ef6604eb217e5648646232579fd07672277"
+  },
+  "longing.mp4": {
+    "parts": [
+      "longing.00.part",
+      "longing.01.part"
+    ],
+    "bytes": 38550835,
+    "sha256": "e73389deeb8f75c7cfe2ee982749ce5079cf843b664221c974bde1eafc2402cc"
+  },
+  "rock.mp4": {
+    "parts": [
+      "rock.00.part",
+      "rock.01.part"
+    ],
+    "bytes": 40268875,
+    "sha256": "2054510788bfd11625f5d4960fd8ffa9e5f93d165a93db1d41ba651bb796963a"
+  },
+  "soju.mp4": {
+    "parts": [
+      "soju.00.part",
+      "soju.01.part"
+    ],
+    "bytes": 26742279,
+    "sha256": "f89455d8b53987035366b6d0250e8df9d9ca9abe101cfc82edb871a3d73281df"
+  }
+}
