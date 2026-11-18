@@ -1,0 +1,6 @@
+data/
+seed_media/
+__pycache__/
+.env
+*.sqlite3
+admin_password.txt
