@@ -8,11 +8,6 @@ BASE=Path(__file__).resolve().parent
 DATA=Path(os.environ.get('DATA_DIR',str(BASE/'data'))).resolve(); DATA.mkdir(parents=True,exist_ok=True)
 UPLOAD=DATA/'uploads'; UPLOAD.mkdir(exist_ok=True)
 PASS=os.environ.get('ADMIN_PASSWORD')
-if not PASS:
-    pf=DATA/'admin_password.txt'
-    if not pf.exists():
-        pf.write_text(secrets.token_urlsafe(16),encoding='utf8'); pf.chmod(0o600)
-    PASS=pf.read_text(encoding='utf8').strip()
 SECRET=os.environ.get('SESSION_SECRET') or secrets.token_hex(32)
 SESSIONS={}; ATTEMPTS={}
 DB=DATA/'site.sqlite3'
@@ -37,7 +32,7 @@ class H(BaseHTTPRequestHandler):
     def token(self):
         try:c=SimpleCookie(self.headers.get('Cookie',''));return c['session'].value if 'session' in c else None
         except:return None
-    def auth(self):return SESSIONS.get(self.token(),0)>time.time()
+    def auth(self):return bool(PASS) and SESSIONS.get(self.token(),0)>time.time()
     def require(self):
         if not self.auth():raise APIError('관리자 로그인이 필요합니다.',401)
     def check_origin(self):
@@ -78,8 +73,10 @@ class H(BaseHTTPRequestHandler):
         p=self.get_path()
         if p=='/api/videos':
             with conn() as db: rows=[dict(r) for r in db.execute('SELECT id,title,artist,genre,description,source,youtube,cover FROM videos ORDER BY created DESC')]
+            for row in rows:
+                row['ready']=bool(row.get('youtube') or self.valid_media(row.get('source'),'video'))
             return self.send_json(rows)
-        if p=='/api/session':return self.send_json({'authenticated':self.auth()})
+        if p=='/api/session':return self.send_json({'authenticated':self.auth(),'configured':bool(PASS)})
         if p=='/':return self.serve(BASE/'index.html',head)
         if p.startswith('/uploads/'):
             name=p[9:]
@@ -140,6 +137,7 @@ class H(BaseHTTPRequestHandler):
     def post(self):
         self.check_origin();p=self.get_path()
         if p=='/api/login':
+            if not PASS: self.close_connection=True;raise APIError('관리자 암호 설정 전입니다.',503)
             ip=self.client_address[0];now=time.time();attempts=[t for t in ATTEMPTS.get(ip,[]) if now-t<300];ATTEMPTS[ip]=attempts
             if len(attempts)>=12:raise APIError('로그인 시도가 많습니다. 잠시 후 다시 시도하세요.',429)
             b=self.body();password=str(b.get('password','')) if isinstance(b,dict) else ''
@@ -169,5 +167,4 @@ class H(BaseHTTPRequestHandler):
 if __name__=='__main__':
     port=int(os.environ.get('PORT','8000'));host=os.environ.get('HOST','127.0.0.1')
     print(f'KANG IN HAN: http://{host}:{port}',flush=True)
-    if not os.environ.get('ADMIN_PASSWORD'):print('관리자 암호: '+PASS+' (data/admin_password.txt)',flush=True)
     ThreadingHTTPServer((host,port),H).serve_forever()
