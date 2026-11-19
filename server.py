@@ -21,6 +21,10 @@ with conn() as db:
         for i,(k,title,genre,desc) in enumerate(SEED):
             db.execute('INSERT INTO videos VALUES(?,?,?,?,?,?,?,?,?)',(k,title,'강인한',genre,desc,f'seed_media/{k}.mp4',None,f'assets/{k}.jpg',time.time()-i))
         db.execute("INSERT INTO settings VALUES('seeded','1')")
+    # Add this repository-backed release once, including for existing databases.
+    if (BASE/'seed_media/heaven.mp4').is_file() and not db.execute("SELECT 1 FROM settings WHERE key='seed_heaven_v1'").fetchone():
+        db.execute('INSERT OR IGNORE INTO videos VALUES(?,?,?,?,?,?,?,?,?)',('heaven','하늘도 갈라놓을 수 없는 사랑','강인한','OTHER','Even Heaven Can’t Tear Us Apart','seed_media/heaven.mp4',None,'assets/stage.jpg',time.time()))
+        db.execute("INSERT INTO settings VALUES('seed_heaven_v1','1')")
 class APIError(Exception):
     def __init__(self,msg,status=400): self.msg=msg;self.status=status
 class H(BaseHTTPRequestHandler):
