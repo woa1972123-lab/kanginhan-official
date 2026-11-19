@@ -2,7 +2,7 @@
 import os, json, re, secrets, sqlite3, shutil, hmac, time, mimetypes, hashlib
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit, unquote, parse_qs
+from urllib.parse import urlsplit, unquote, parse_qs, quote
 from http.cookies import SimpleCookie
 BASE=Path(__file__).resolve().parent
 DATA=Path(os.environ.get('DATA_DIR',str(BASE/'data'))).resolve(); DATA.mkdir(parents=True,exist_ok=True)
@@ -53,7 +53,7 @@ class H(BaseHTTPRequestHandler):
         return f'session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={age}'+secure
     def log_message(self,fmt,*args): print(fmt%args,flush=True)
     def get_path(self):return unquote(urlsplit(self.path).path)
-    def serve(self,p,head=False):
+    def serve(self,p,head=False,download_name=None):
         if not p.is_file():raise APIError('파일이 없습니다.',404)
         n=p.stat().st_size;start=0;end=n-1;partial=False
         if self.headers.get('Range'):
@@ -64,6 +64,8 @@ class H(BaseHTTPRequestHandler):
                 self.send_response(416);self.send_header('Content-Range',f'bytes */{n}');self.send_header('Content-Length','0');self.end_headers();return
             partial=True
         self.send_response(206 if partial else 200);self.send_header('Content-Type',mimetypes.guess_type(p.name)[0] or 'application/octet-stream');self.send_header('Content-Length',str(end-start+1));self.send_header('Accept-Ranges','bytes');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-cache' if p.suffix=='.html' else 'public,max-age=3600')
+        if download_name:
+            self.send_header('Content-Disposition', "attachment; filename=\"Kang-In-Han.mp4\"; filename*=UTF-8''" + quote(download_name, safe=''))
         if partial:self.send_header('Content-Range',f'bytes {start}-{end}/{n}')
         self.end_headers()
         if head:return
@@ -73,12 +75,24 @@ class H(BaseHTTPRequestHandler):
                 b=f.read(min(remain,256*1024))
                 if not b:break
                 self.wfile.write(b);remain-=len(b)
+    def download_video(self,vid,head=False):
+        with conn() as db:
+            row=db.execute('SELECT title,source,youtube FROM videos WHERE id=?',(vid,)).fetchone()
+        if not row or row['youtube'] or not self.valid_media(row['source'],'video'):
+            raise APIError('다운로드 가능한 영상이 없습니다.',404)
+        source=row['source']
+        path=UPLOAD/source[9:] if source.startswith('/uploads/') else BASE/source
+        title=re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', '_', row['title']).strip()[:100] or vid
+        return self.serve(path,head,download_name='강인한 - '+title+'.mp4')
     def get(self,head=False):
         p=self.get_path()
+        download=re.fullmatch(r'/download/([a-z0-9]+)',p)
+        if download:return self.download_video(download.group(1),head)
         if p=='/api/videos':
             with conn() as db: rows=[dict(r) for r in db.execute('SELECT id,title,artist,genre,description,source,youtube,cover FROM videos ORDER BY created DESC')]
             for row in rows:
-                row['ready']=bool(row.get('youtube') or self.valid_media(row.get('source'),'video'))
+                row['downloadable']=bool(not row.get('youtube') and self.valid_media(row.get('source'),'video'))
+                row['ready']=bool(row.get('youtube') or row['downloadable'])
             return self.send_json(rows)
         if p=='/api/session':return self.send_json({'authenticated':self.auth(),'configured':bool(PASS)})
         if p=='/':return self.serve(BASE/'index.html',head)
