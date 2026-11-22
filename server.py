@@ -115,7 +115,16 @@ class H(BaseHTTPRequestHandler):
             name=p[9:]
             if not re.fullmatch(r'[a-f0-9]{32}\.(mp4|png|jpg|webp)',name):raise APIError('파일 없음',404)
             return self.serve(UPLOAD/name,head)
-        if re.fullmatch(r'/(assets/[a-z]+\.jpg|seed_media/[a-z0-9_-]+\.mp4)',p):return self.serve(BASE/p[1:],head)
+        if re.fullmatch(r'/(assets/[a-z]+\.jpg|seed_media/[a-z0-9_-]+\.mp4)',p):
+            download_names={
+                'kanginhan_homepage_mv1.mp4':'강인한_쓰다_소주처럼.mp4',
+                'kanginhan_spanish_mv-1.mp4':'강인한_인생산다는게뭘까_스페인어.mp4',
+                'kanginhan_lagrimas_negras_homepage.mp4':'강인한_검은눈물_Lagrimas_Negras.mp4',
+            }
+            name=p[len('/seed_media/'):] if p.startswith('/seed_media/') else ''
+            if parse_qs(urlsplit(self.path).query).get('download')==['1'] and name in download_names:
+                return self.serve(BASE/p[1:],head,download_name=download_names[name])
+            return self.serve(BASE/p[1:],head)
         raise APIError('페이지 없음',404)
     def upload(self):
         self.require();kind=parse_qs(urlsplit(self.path).query).get('kind',[''])[0];limit=500*1024*1024 if kind=='video' else 10*1024*1024
