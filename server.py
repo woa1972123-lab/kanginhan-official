@@ -119,6 +119,7 @@ class H(BaseHTTPRequestHandler):
             download_names={
                 'kanginhan_homepage_mv1.mp4':'강인한_쓰다_소주처럼.mp4',
                 'da_noko_ganda.mp4':'강인한_다_놓고_간다.mp4',
+                'strong_cheongchunbyeolgok.mp4':'STRONG_청춘별곡_새리마스터.mp4',
                 'billyeo_sseuneun_haneul.mp4':'강인한_빌려_쓰는_하늘.mp4',
                 'kanginhan_spanish_mv-1.mp4':'강인한_인생산다는게뭘까_스페인어.mp4',
                 'kanginhan_lagrimas_negras_homepage.mp4':'강인한_검은눈물_Lagrimas_Negras.mp4',
