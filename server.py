@@ -25,6 +25,21 @@ with conn() as db:
     if (BASE/'seed_media/heaven.mp4').is_file() and not db.execute("SELECT 1 FROM settings WHERE key='seed_heaven_v1'").fetchone():
         db.execute('INSERT OR IGNORE INTO videos VALUES(?,?,?,?,?,?,?,?,?)',('heaven','하늘도 갈라놓을 수 없는 사랑','강인한','OTHER','Even Heaven Can’t Tear Us Apart','seed_media/heaven.mp4',None,'assets/stage.jpg',time.time()))
         db.execute("INSERT INTO settings VALUES('seed_heaven_v1','1')")
+    # Register repository-backed music videos once, also on existing deployments.
+    if not db.execute("SELECT 1 FROM settings WHERE key='release_20261122_v1'").fetchone():
+        releases=[
+            ('sojunew','쓰다… 소주처럼… (새 뮤직비디오)','BLUES',
+             '강인한의 인생 블루스, 새롭게 편집한 뮤직비디오.','seed_media/kanginhan_homepage_mv1.mp4','assets/soju.jpg'),
+            ('spanish','인생 산다는 게 뭘까 (스페인어 뮤직비디오)','OTHER',
+             '강인한의 스페인어 뮤직비디오.','seed_media/kanginhan_spanish_mv-1.mp4','assets/stage.jpg'),
+            ('lagrimas','검은 눈물 (Lágrimas Negras)','BLUES',
+             '강인한의 라틴 블루스 뮤직비디오.','seed_media/kanginhan_lagrimas_negras_homepage.mp4','assets/rock.jpg'),
+        ]
+        for i,(vid,title,genre,desc,source,cover) in enumerate(releases):
+            if (BASE/source).is_file():
+                db.execute('INSERT OR IGNORE INTO videos VALUES(?,?,?,?,?,?,?,?,?)',
+                           (vid,title,'강인한',genre,desc,source,None,cover,time.time()+i+1))
+        db.execute("INSERT INTO settings VALUES('release_20261122_v1','1')")
 class APIError(Exception):
     def __init__(self,msg,status=400): self.msg=msg;self.status=status
 class H(BaseHTTPRequestHandler):
@@ -100,7 +115,7 @@ class H(BaseHTTPRequestHandler):
             name=p[9:]
             if not re.fullmatch(r'[a-f0-9]{32}\.(mp4|png|jpg|webp)',name):raise APIError('파일 없음',404)
             return self.serve(UPLOAD/name,head)
-        if re.fullmatch(r'/(assets/[a-z]+\.jpg|seed_media/[a-z]+\.mp4)',p):return self.serve(BASE/p[1:],head)
+        if re.fullmatch(r'/(assets/[a-z]+\.jpg|seed_media/[a-z0-9_-]+\.mp4)',p):return self.serve(BASE/p[1:],head)
         raise APIError('페이지 없음',404)
     def upload(self):
         self.require();kind=parse_qs(urlsplit(self.path).query).get('kind',[''])[0];limit=500*1024*1024 if kind=='video' else 10*1024*1024
@@ -132,7 +147,7 @@ class H(BaseHTTPRequestHandler):
         if path.startswith('/uploads/'):
             name=path[9:]; patt=r'[a-f0-9]{32}\.mp4' if kind=='video' else r'[a-f0-9]{32}\.(jpg|png|webp)'
             return bool(re.fullmatch(patt,name)) and (UPLOAD/name).is_file()
-        if kind=='video':return bool(re.fullmatch(r'seed_media/[a-z]+\.mp4',path)) and (BASE/path).is_file()
+        if kind=='video':return bool(re.fullmatch(r'seed_media/[a-z0-9_-]+\.mp4',path)) and (BASE/path).is_file()
         return (bool(re.fullmatch(r'assets/[a-z]+\.jpg',path)) and (BASE/path).is_file()) or bool(re.fullmatch(r'https://i\.ytimg\.com/vi/[\w-]{11}/hqdefault\.jpg',path))
     def update(self,vid=None):
         self.require();b=self.body()
